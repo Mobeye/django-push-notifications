@@ -57,6 +57,7 @@ class GCMDevice(Device):
 		help_text=_("ANDROID_ID / TelephonyManager.getDeviceId() (always as hex)")
 	)
 	registration_id = models.TextField(verbose_name=_("Registration ID"))
+	is_fcm_device = models.BooleanField(default=False, help_text='Does this device use the React App?');
 
 	objects = GCMDeviceManager()
 

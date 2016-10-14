@@ -34,7 +34,13 @@ def _chunks(l, n):
 		yield l[i:i + n]
 
 
-def _gcm_send(data, content_type):
+def _gcm_send(data, content_type, api_endpoint_type):
+
+	if api_endpoint_type == 'FCM':
+		api_endpoint_url = SETTINGS["FCM_POST_URL"]
+	else:
+		api_endpoint_url = SETTINGS["GCM_POST_URL"]
+
 	key = SETTINGS.get("GCM_API_KEY")
 	if not key:
 		raise ImproperlyConfigured(
@@ -46,7 +52,8 @@ def _gcm_send(data, content_type):
 		"Authorization": "key=%s" % (key),
 		"Content-Length": str(len(data)),
 	}
-	request = Request(SETTINGS["GCM_POST_URL"], data, headers)
+	
+	request = Request(api_endpoint_url, data, headers)
 	return urlopen(request, timeout=SETTINGS["GCM_ERROR_TIMEOUT"]).read().decode("utf-8")
 
 
@@ -112,6 +119,11 @@ def _gcm_send_json(registration_ids, data, **kwargs):
 	if data is not None:
 		values["data"] = data
 
+
+	# FIXME: Temporary fix to ensure compatibility with both GCM (old) and FCM (new)
+	# To be removed when the migration to FCM is complete.
+	api_endpoint_type = kwargs.pop('api_endpoint_type', None)
+
 	for k, v in kwargs.items():
 		if v:
 			values[k] = v
@@ -119,7 +131,7 @@ def _gcm_send_json(registration_ids, data, **kwargs):
 	# Sort the keys for deterministic output (useful for tests)
 	data = json.dumps(values, separators=(",", ":"), sort_keys=True).encode("utf-8")
 
-	response = json.loads(_gcm_send(data, "application/json"))
+	response = json.loads(_gcm_send(data, "application/json", api_endpoint_type))
 	if response.get("failure") or response.get("canonical_ids"):
 		ids_to_remove, old_new_ids = [], []
 		throw_error = False
